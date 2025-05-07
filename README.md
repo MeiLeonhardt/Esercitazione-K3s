@@ -451,41 +451,11 @@ Ho ordinato le regole in base alla priorità e associato le regole alla subnet i
 **Regole di Base**
 1. SSH (porta 22) - Priorità 100: Permette la connessione SSH per la gestione remota delle VM.
 
-**Regole per Docker**
-
-2. Docker API Secure (porta 2376) - Priorità 110: Consente l'accesso all'API Docker protetta con TLS.
-
-3. Docker Swarm (porta 2377) - Priorità 120: Consente la comunicazione per il servizio di clustering di Docker Swarm.
-
-4. Docker Overlay Network (porta 4789 UDP) - Priorità 130: Necessaria per il traffico di rete tra i container Docker.
-
-5. Docker Swarm Node Communication (porta 7946) - Priorità 140 e 150: Consente la comunicazione tra i nodi Docker Swarm, sia TCP che UDP.
-
-
-**Regole per Kubernetes (K3s)**
-
-6. Kubernetes API Server (porta 6443) - Priorità 200: Consente l'accesso all'API server Kubernetes.
-
-8. Kubelet API (porta 10250) - Priorità 210: Necessaria per la comunicazione tra i componenti di Kubernetes.
-
-9. Kube-proxy (porta 10256) - Priorità 220: Utilizzata per il controllo dello stato di kube-proxy.
-  -  kube-proxy è un componente di Kubernetes che gestisce il networking per i servizi. Si occupa di instradare il traffico in entrata verso i pod appropriati, utilizzando le regole di servizio definite. kube-proxy può operare in diverse modalità, come iptables o IPVS, per gestire il bilanciamento del carico e garantire che le richieste siano indirizzate correttamente ai pod in esecuzione.
-
-10. CoreDNS (porta 53 TCP/UDP) - Priorità 230 e 240: Consente la risoluzione DNS all'interno del cluster.
-
-11. Flannel VXLAN (porta 8472 UDP) - Priorità 250: Necessaria per la rete di container gestita da Flannel in K3s.
-  - Flannel in K3s: Flannel è una rete overlay utilizzata per la comunicazione tra i pod in un cluster Kubernetes. In K3s, che è una distribuzione leggera di Kubernetes, Flannel è spesso utilizzato come soluzione di rete predefinita. Fornisce un modo semplice per gestire la rete tra i vari nodi e pod, consentendo loro di comunicare tra loro in modo efficiente.
-
-12. Metrics Server (porta 10251) - Priorità 260: Consente la raccolta di metriche nel cluster.
-
-13. NodePort Services (porte 30000-32767) - Priorità 270: Range di porte utilizzato per esporre servizi all'esterno del cluster.
-
-
 **Regole per le applicazioni web come Nginx**
 
-13. HTTP (porta 80) - Priorità 300: Consente il traffico HTTP per applicazioni web come NGINX.
+2. HTTP (porta 80) - Priorità 300: Consente il traffico HTTP per applicazioni web come NGINX.
 
-14. HTTPS (porta 443) - Priorità 310: Consente il traffico HTTPS sicuro.
+3. HTTPS (porta 443) - Priorità 310: Consente il traffico HTTPS sicuro.
 __________________________________________________________
 # 3. Deployment dell'applicazione setup.sh
 Questo file verrà copiato ed eseguito da Terraform nella VM creata. Oltre ai comandi di installazione di docker e K3s, bisogna creare anche 2 file YAML, uno per il deployment e uno per il service.
