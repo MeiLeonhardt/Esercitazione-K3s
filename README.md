@@ -616,7 +616,6 @@ Crea un file deployment.yaml direttamente nella VM che definisce un deployment K
 - Crea 3 repliche (pod) di un container NGINX
 - Definisce etichette per la selezione e l'identificazione
 - Configura il container per esporre la porta 80
-![image](https://github.com/user-attachments/assets/03e13325-2731-40db-a1cc-a54865438ae4)
 
 ```
 # Creazione del file YAML per il Deployment dei pod EOF serve per identificare l'inizio e la fine del contenuto per i file deployment e service
@@ -649,7 +648,6 @@ Crea un file service.yaml che definisce un service Kubernetes direttamente nella
 - Espone i pod creati dal deployment tramite un singolo indirizzo IP interno al cluster
 - Indirizza il traffico verso la porta 80 dei pod con l'etichetta "app: example"
 - È di tipo ClusterIP, quindi accessibile solo dall'interno del cluster
-![image](https://github.com/user-attachments/assets/ec1579a9-39c2-4857-a99b-ab7ae968cd3f)
 
 ```
 # Creazione del file YAML per il Service
