@@ -314,6 +314,8 @@ VM
 Virtual Network
 ![image](https://github.com/user-attachments/assets/bca7cf45-53a4-4f62-b974-afdc38a57475)
 
+____________________________________________________________
+
 ## Network Security Groups: gruppo di sicurezza di rete
 
 main.tf
