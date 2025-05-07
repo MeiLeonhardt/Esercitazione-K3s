@@ -170,10 +170,15 @@ output "subnet_cidr_validato" {
 ![image](https://github.com/user-attachments/assets/5243c860-07f1-4516-8350-3f50be78290c)
 
 _______________________________________________________
-## Creazione VM
-Per la creazione della Virtual machine si è scelto un Ubuntu Server, la scelta dell'immagine ha creato qualche problema per una questione di disponibilità dell'immagine nella regione scelta (nel mio caso West Europe non supportava  "UbuntuServer-18.04-LTS:latest. La soluzione è esposta in "Errori"
-main.tf
+## Creazione VM + provisioner
+Per la creazione della Virtual machine si è scelto un Ubuntu Server, la scelta dell'immagine ha creato qualche problema per una questione di disponibilità dell'immagine nella regione scelta (nel mio caso West Europe non supportava  "UbuntuServer-18.04-LTS:latest. La soluzione è esposta in "Errori".
+
+Questa configurazione prevede l'installazione da Terraform di docker e K3s come provisioner.
+### main.tf
+Questa configurazione prevede l'installazione da Terraform di docker e K3s come provisioner. 
+Per configurare Docker e K3s come provisioner in una macchina virtuale (VM) utilizzando Terraform, si utilizza il ```provisioner``` "file" e "remote-exec". Questi permettono di copiare uno script di installazione sulla VM e di eseguirlo per installare Docker e K3s.
 ```
+#4. creo la VM
 resource "azurerm_linux_virtual_machine" "vm_master" {
   for_each = var.vm_master
 
@@ -181,8 +186,8 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
   resource_group_name             = azurerm_resource_group.K3s_Lab.name
   location                        = azurerm_resource_group.K3s_Lab.location
   size                            = each.value.vm_size
-  admin_username                  = "azureuser"
-  admin_password                  = "Password!£!?"
+  admin_username                  = var.admin_username
+  admin_password                  = var.admin_password
   disable_password_authentication = false
 
   network_interface_ids = [
@@ -203,6 +208,31 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
   }
 
   tags = each.value.tags
+```
+Questa parte del **provisioner** deve essere inserita all'interno del blocco di configurazione della VM, dopo essersi premurati di creare un file script.sh.
+```
+  provisioner "file" {
+    source      = "setup.sh"      # File locale
+    destination = "/tmp/setup.sh" # Path remoto
+
+    connection {
+      type     = "ssh"
+      user     = var.admin_username
+      password = var.admin_password
+      host     = azurerm_public_ip.k3s_ip.ip_address
+    }
+  }
+
+  provisioner "remote-exec" {
+    inline = ["chmod +x /tmp/setup.sh", "/tmp/setup.sh"]
+
+    connection {
+      type     = "ssh"
+      user     = var.admin_username
+      password = var.admin_password
+      host     = azurerm_public_ip.k3s_ip.ip_address
+    }
+  }
 }
 ```
 
@@ -211,8 +241,9 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
 La variabile admin e password:
 - Definisce le variabili per l'username e la password dell'amministratore per tutte le VM. La password è protetta (sensitive) per evitare di esporla nel piano di esecuzione.
 - Consente di centralizzare le credenziali di amministratore e di applicarle uniformemente a tutte le VM, pur mantenendo una certa sicurezza per la password.
+- Tuttavia, questo metodo ha portato a diversi errori nell'usare il provisioner. Verrà analizzato nella sezione "Errori".
 
-variables.tf
+### variables.tf
 ```
 variable "vm_master" {
   type = map(object({
@@ -266,7 +297,7 @@ variable "admin_password" {
 }
 ```
 
-terraform.tfvars
+### terraform.tfvars
 ```
 vm_master = {
   "VM-master" = {
@@ -284,6 +315,60 @@ vm_master = {
   }
 }
 admin_username = "azureadmin"
+#qui aggiungere admin_password e subscription_id
+```
+### setup.sh
+```
+#!/bin/bash
+#aggiornamento pacchetti disponibili e versioni
+sudo apt-get update
+
+# Installa i pacchetti necessari
+sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
+
+# Aggiungi la chiave GPG del repository di Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+# Aggiungi il repository di Docker
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+# Aggiorna nuovamente l'elenco dei pacchetti
+sudo apt update
+
+# Installa Docker
+sudo apt install docker-ce -y
+
+# Avvia e abilita il servizio Docker
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Installa K3s
+curl -sfL https://get.k3s.io | sh -
+
+# Controlla lo stato di K3s
+systemctl status k3s
+
+#Avvio servizio K3s
+sudo systemctl enable k3s && sudo systemctl start k3s
+
+#verifichiamo che l'installazione sia avvenuta
+k3s --version
+
+#configurazione kubectl per K3s
+sudo ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
+export KUBERVERSION=$(kubectl version --short)
+
+#file YAML per il Deployment e service
+echo "EOF" > deployment.yaml
+echo "EOF" > service.yaml
+
+#applicazione file yaml
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+
+#verifica deployment
+kubectl get pods
+kubectl get services
 ```
 
 ### Errori riscontrati e soluzione
@@ -305,8 +390,37 @@ Nel file terraform.tfvars, avevo specificato Ubuntu 24.04 LTS che potrebbe non e
 #Elenca tutte le offerte Ubuntu disponibili
 echo "Offerte Ubuntu disponibili:" az vm image list-offers --location westeurope --publisher Canonical -o table
 ```
+
 ![image](https://github.com/user-attachments/assets/473c9b34-0978-4063-a39c-1b830492bb7a)
 
+```
+│ Error: file provisioner error
+│
+│   with azurerm_linux_virtual_machine.vm_master["VM-master"],
+│   on main.tf line 80, in resource "azurerm_linux_virtual_machine" "vm_master":
+│   80:   provisioner "file" {
+│
+│ timeout - last error: dial tcp 168.63.28.19:22: i/o timeout
+```
+Questo errore è dovuto al fatto che Terraform non riesca ad accedere alla VM e quindi non può utilizzare il file.sh, perché le credenziali che ho creato erano "nascoste", ovvero le ho salvate in un file .tfvars.secret in modo che non poossano essere lette automaticamente come variabili. Però, in questo modo Terraform non riuscirà a connettersi con la VM. Pertanto, ho dovuto re-inserire le variabili, esplicitandole nel file .tfvars.
+Ultimo problema con questa configurazione, è stato il fatto che nella network interface della VM mi sono dimenticata di inserire l'IP pubblico, altro buon motivo per ricevere errori da Terraform:)
+
+**Network interface corretta**
+```
+resource "azurerm_network_interface" "network_interface_K3s" {
+  for_each            = var.vm_master
+  name                = "net-int-${var.prefix}-${each.key}"
+  location            = azurerm_resource_group.K3s_Lab.location
+  resource_group_name = azurerm_resource_group.K3s_Lab.name
+
+  ip_configuration {
+    name                          = "ipconfig"
+    subnet_id                     = azurerm_subnet.subnet_master.id
+    private_ip_address_allocation = "Static"
+    public_ip_address_id          = azurerm_public_ip.k3s_ip.id
+  }
+}
+```
 **Risultato atteso**
 VM
 ![image](https://github.com/user-attachments/assets/51e796e4-2a78-4e93-9bbe-a3d89a21a908)
