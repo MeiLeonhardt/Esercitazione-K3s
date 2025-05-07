@@ -513,6 +513,8 @@ Virtual Network
 ____________________________________________________________
 
 ## Network Security Groups: gruppo di sicurezza di rete
+![Screenshot 2025-05-07 160813](https://github.com/user-attachments/assets/408773c8-5168-4e6c-945f-209f906fd3ba)
+
 Per eseguire l'accesso alla VM è necessario creare una regola Inbound per l'accesso alla porta 22 in SSH.
 Per garantire il corretto funzionamento dell'ambiente Kubernetes (K3s) e Docker configurato nello script setup.sh, è necessario configurare alcune regole di sicurezza di rete che permettano la comunicazione sulle porte richieste. Ecco uno script che configura le regole firewall necessarie:
 main.tf
@@ -545,6 +547,9 @@ resource "azurerm_subnet_network_security_group_association" "nsg_association" {
 Per i Gruppi di sicurezza ho dovuto creare (verificando online), delle regole che permettessero il traffico da qualsiasi origine (non è molto sicuro, soprattutto quando si parla della porta 22 SSH). Infatti, in ambiente di produzione sarebbe meglio associare le regole solo ad indirizzi IP sicuri.
 
 Ho ordinato le regole in base alla priorità e associato le regole alla subnet in questione.
+![Screenshot 2025-05-07 160822](https://github.com/user-attachments/assets/7d7cf937-db57-4efa-8d93-04def3ec6623)
+
+
 **Regole di Base**
 1. SSH (porta 22) - Priorità 100: Permette la connessione SSH per la gestione remota delle VM.
 
