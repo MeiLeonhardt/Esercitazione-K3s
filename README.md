@@ -362,6 +362,8 @@ sudo systemctl start docker
 sudo systemctl enable docker
 ```
 **2. Installazione K3s**
+K3s è una distribuzione leggera di Kubernetes progettata per essere facile da installare e gestire, particolarmente adatta per ambienti edge, IoT e sviluppo. È sviluppata da Rancher Labs e include molte delle funzionalità di Kubernetes, ma con un ingombro ridotto e una configurazione semplificata. K3s è progettato per funzionare bene su hardware con risorse limitate e può essere eseguito in modo efficiente su macchine virtuali o dispositivi a bassa potenza.
+
 ```
 # Installa K3s
 curl -sfL https://get.k3s.io | sh -
@@ -573,10 +575,12 @@ Ho ordinato le regole in base alla priorità e associato le regole alla subnet i
 8. Kubelet API (porta 10250) - Priorità 210: Necessaria per la comunicazione tra i componenti di Kubernetes.
 
 9. Kube-proxy (porta 10256) - Priorità 220: Utilizzata per il controllo dello stato di kube-proxy.
+  -  kube-proxy è un componente di Kubernetes che gestisce il networking per i servizi. Si occupa di instradare il traffico in entrata verso i pod appropriati, utilizzando le regole di servizio definite. kube-proxy può operare in diverse modalità, come iptables o IPVS, per gestire il bilanciamento del carico e garantire che le richieste siano indirizzate correttamente ai pod in esecuzione.
 
 10. CoreDNS (porta 53 TCP/UDP) - Priorità 230 e 240: Consente la risoluzione DNS all'interno del cluster.
 
 11. Flannel VXLAN (porta 8472 UDP) - Priorità 250: Necessaria per la rete di container gestita da Flannel in K3s.
+  - Flannel in K3s: Flannel è una rete overlay utilizzata per la comunicazione tra i pod in un cluster Kubernetes. In K3s, che è una distribuzione leggera di Kubernetes, Flannel è spesso utilizzato come soluzione di rete predefinita. Fornisce un modo semplice per gestire la rete tra i vari nodi e pod, consentendo loro di comunicare tra loro in modo efficiente.
 
 12. Metrics Server (porta 10251) - Priorità 260: Consente la raccolta di metriche nel cluster.
 
