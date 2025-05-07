@@ -1,0 +1,25 @@
+# File di stato Terraform locali
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# File di crash
+crash.log
+crash.*.log
+
+# File di esclusione sensibili
+*.tfvars.secret
+*.tfvars.local
+
+# File di backup generati da terraform
+*_override.tf
+*_override.tf.json
+override.tf
+override.tf.json
+
+# File di log
+terraform-provider-*.log
+
+# File che potrebbero contenere informazioni sensibili
+.terraformrc
+terraform.rc
