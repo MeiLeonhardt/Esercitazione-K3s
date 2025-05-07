@@ -23,6 +23,8 @@ https://github.com/MrMagicalSoftware/docker-k8s/blob/main/esercitazione-docker-f
 - Configurare una rete virtuale (VNet) appropriata
 - Implementare gruppi di sicurezza (NSG) per gestire il traffico di rete
 
+___________________________________________________
+
 ## Azurerm e Gruppo risorse
 Verifica dell'**account di Azure**:
 
@@ -59,14 +61,23 @@ variable "subscription_id" {
   sensitive   = true
 }
 ```
+![image](https://github.com/user-attachments/assets/ef28516e-d7b1-45c8-977c-109d694f6e94)
+
 
 Successivamente, ho creato un ```terraform.tfvars.secret```.
 
 In questo file verranno messi tutti i dati sensibili, come l'id, le password etc...
 
 Infine, dò il comando ```terraform init``` per inizializzare la directory in cui lavorerò.
+**Risultato atteso dopo ```terraform plan```/```terraform apply```**
+![image](https://github.com/user-attachments/assets/66561906-8d4d-4fcf-a36e-b81e929e549f)
 
-## Creazione VNet e Subnet
+**Risultato atteso nella piattaforma Azure**
+![image](https://github.com/user-attachments/assets/abd4b04b-344c-4844-85de-4a11be5507de)
+
+____________________________________________________________
+
+## Creazione VNet, Subnet e interfaccia di rete
 Per la creazione della virtual network ho utilizzato una variabile per personalizzare il nome rispetto al progetto. Si tratta di un prefisso, il cui valore predefinito sarà "K3s".
 
 main.tf
@@ -85,6 +96,19 @@ resource "azurerm_subnet" "subnet_master" {
   virtual_network_name = azurerm_virtual_network.vnet_master.name  #Collegata alla VNet creata sopra
   address_prefixes     = ["10.0.1.0/24"] #IP range per la sottorete
 }
+
+resource "azurerm_network_interface" "network_interface_K3s" {
+  for_each            = var.vm_master
+  name                = "net-int-${var.prefix}-${each.key}" #Nella risorsa azurerm_network_interface, avevo definito il nome come "net-int-${var.prefix}" e Terraform avrebbe creato delle risorse con lo stesso nome. Ma Azure Network Interface deve avere un nome univoco all'interno di una stesssa sottorete e gruppo di risorse. Mi ha infatti restituito :"The resource with the name 'net-int-K3s' already exists."
+  location            = azurerm_resource_group.K3s_Lab.location
+  resource_group_name = azurerm_resource_group.K3s_Lab.name
+
+  ip_configuration {
+    name                          = "ipconfig"
+    subnet_id                     = azurerm_subnet.subnet_master.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
 ```
 
 variables.tf> definisco i nomi dinamici per le risorse usando la variabile ```prefix``` e esplicitando il contenuto (essendo ```string```) nel file ```.tfvars.```
@@ -98,6 +122,80 @@ variable "prefix" {
 terraform.tfvars > assegno esplicitamente il valore "K3s" alla variabile ```prefix```
 ```
 prefix = "K3s"
+```
+### Validazione CIDR dopo ```terraform plan```/```terraform apply```
+In questa configurazione, se avessimo voluto garantire che l'indirizzo IP della subnet (in formato CIDR) fosse valido e rientrasse in un intervallo accettabile, potevamo definire una variabile con il CIDR della subnet, aggiungendo una validazione (ad esempio, 10.0.0.0/16).
+
+main.tf
+```
+resource "azurerm_subnet" "subnet_master" {
+  name                 = "${var.prefix}-subnet-master"
+  resource_group_name  = azurerm_resource_group.K3s_Lab.name
+  virtual_network_name = azurerm_virtual_network.vnet_master.name
+  address_prefixes     = [var.subnet_cidr]
+}
+```
+variables.tf
+```
+#Definire una variabile subnet_cidr
+variable "subnet_cidr" {
+    type = string
+    description = "CIDR della subnet (es. 10.0.1.0/24)"
+
+    validation {
+      condition = can(cidrhost(var.subnet_cidr, 0)) && startswith(var.subnet_cidr, "10.0")
+      error_message = "Il CIDR deve essere valido e deve appartenere al blocco 10.0.0.0/16"
+    }
+  
+}
+#Verificare che il CIDR sia valido e rientri in un range accettabile (es. una /24 all’interno di 10.0.0.0/16)
+
+#Usare quel CIDR per creare una subnet
+```
+outputs.tf
+```
+output "subnet_cidr_validato" {
+  value = var.subnet_cidr
+} #mostrare in outputs.tf il risultato
+```
+**Risultato atteso nella piattaforma Azure**
+![image](https://github.com/user-attachments/assets/5243c860-07f1-4516-8350-3f50be78290c)
+
+_______________________________________________________
+## Creazione VM
+
+main.tf
+```
+
+```
+
+variables.tf
+```
+
+```
+
+terraform.tfvars
+```
+
+```
+
+### Errori riscontrati e soluzione
+```
+│ Error: creating Linux Virtual Machine (Subscription: "subscription_id"
+│ Resource Group Name: "K3s-Lab"
+cted status 404 (404 Not Found) with error: PlatformImageNotFound: The platform image 'Canonical:0001-com-ubuntu-server-kinetic:24_04-lts-gen2:latest' is not available. Verify that all fields in the storage profile are correct. For more details about storage profile information, please refer to https://aka.ms/storageprofile
+│
+│   with azurerm_linux_virtual_machine.vm_master["VM-master"],
+│   on main.tf line 42, in resource "azurerm_linux_virtual_machine" "vm_master":
+│   42: resource "azurerm_linux_virtual_machine" "vm_master" {
+│
+╵
+```
+**Problema con l'immagine di Ubuntu**
+Nel file terraform.tfvars, avevo specificato Ubuntu 24.04 LTS che potrebbe non essere disponibile o non essere correttamente referenziato. Ho verificato, quindi, quali immagini fossero disponibili per la regione scelta, "west europe"
+# Elencare tutte le offerte Ubuntu disponibili
+```
+echo "Offerte Ubuntu disponibili:" az vm image list-offers --location westeurope --publisher Canonical -o table
 ```
 
 
