@@ -307,5 +307,14 @@ echo "Offerte Ubuntu disponibili:" az vm image list-offers --location westeurope
 ```
 ![image](https://github.com/user-attachments/assets/473c9b34-0978-4063-a39c-1b830492bb7a)
 
+**Risultato atteso**
+VM
+![image](https://github.com/user-attachments/assets/51e796e4-2a78-4e93-9bbe-a3d89a21a908)
+
+Virtual Network
+![image](https://github.com/user-attachments/assets/bca7cf45-53a4-4f62-b974-afdc38a57475)
+
+
+
 
 
