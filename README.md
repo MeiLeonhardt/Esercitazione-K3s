@@ -10,7 +10,7 @@ https://github.com/MrMagicalSoftware/docker-k8s/blob/main/esercitazione-docker-f
 - ```terraform init```  = Inizializza una directory di lavoro Terraform, scaricando i plugin dei provider e preparando l’ambiente per l'esecuzione dei comandi successivi.
 - ```terraform plan```  = Mostra un’anteprima delle modifiche che Terraform apporterà all’infrastruttura, confrontando lo stato attuale con il codice definito.
 - ```terraform apply``` = Applica effettivamente le modifiche all’infrastruttura secondo quanto previsto dal piano, creando, modificando o distruggendo risorse.
-- ```terraform fmt```  = Formattta i file di configurazione Terraform secondo lo stile standard, migliorandone la leggibilità e la coerenza.
+- ```terraform fmt```  = Formatta i file di configurazione Terraform secondo lo stile standard, migliorandone la leggibilità e la coerenza.
 
 **NB: Comandi utili per la gestione in Azure**
 
@@ -24,7 +24,7 @@ https://github.com/MrMagicalSoftware/docker-k8s/blob/main/esercitazione-docker-f
 - Implementare gruppi di sicurezza (NSG) per gestire il traffico di rete
 
 ## Creazione infrastruttura
-In primo luogo si è verificato il corretto accesso all'**account di Azure**:
+Verifica dell'**account di Azure**:
 
 ```az account show```
 Questo comando permette di **verificare** quale **account** di Azure è attualmente **in uso**. 
@@ -67,6 +67,7 @@ In questo file verranno messi tutti i dati sensibili, come l'id, le password etc
 Infine, dò il comando ```terraform init``` per inizializzare la directory in cui lavorerò.
 
 ## Creazione VNet e Subnet
+Per la creazione della virtual network ho utilizzato una variabile per personalizzare il nome rispetto al progetto. Si tratta di un prefisso, il cui valore predefinito sarà "K3s".
 
 main.tf
 
@@ -90,12 +91,14 @@ variables.tf
 
 ```
 variable "prefix" {
-  default     = "K3s"
+  default     = "string"
   description = "Prefisso della risorsa"
 }
 ```
 
-terraform.tfvars
-prefix = 
+terraform.tfvars > assegno esplicitamente il valore "K3s" alla variabile ```prefix```
+```
+prefix = "K3s"
+```
 
 
