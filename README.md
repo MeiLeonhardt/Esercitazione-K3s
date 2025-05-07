@@ -314,7 +314,34 @@ VM
 Virtual Network
 ![image](https://github.com/user-attachments/assets/bca7cf45-53a4-4f62-b974-afdc38a57475)
 
+## Network Security Groups: gruppo di sicurezza di rete
 
+main.tf
+```
+resource "azurerm_network_security_group" "K3s_nsg" {
+  name                = "${var.prefix}-nsg"
+  location            = azurerm_resource_group.K3s_Lab.location
+  resource_group_name = azurerm_resource_group.K3s_Lab.name
+
+  security_rule {
+    name                       = "Allow_SSH_TCP_22"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+# Associazione del gruppo di sicurezza alla subnet
+resource "azurerm_subnet_network_security_group_association" "nsg_association" {
+  subnet_id                 = azurerm_subnet.subnet_master.id
+  network_security_group_id = azurerm_network_security_group.K3s_nsg.id
+}
+```
 
 
 
