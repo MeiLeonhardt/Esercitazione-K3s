@@ -24,10 +24,19 @@ resource "azurerm_subnet" "subnet_master" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-#2. Creo l'interfaccia di rete
+#2. Public IP
+resource "azurerm_public_ip" "k3s_ip" {
+  name                = "${var.prefix}-k3s-ip"
+  location            = azurerm_resource_group.K3s_Lab.location
+  resource_group_name = azurerm_resource_group.K3s_Lab.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+#3. Creo l'interfaccia di rete
 resource "azurerm_network_interface" "network_interface_K3s" {
   for_each            = var.vm_master
-  name                = "net-int-${var.prefix}-${each.key}" #Nella risorsa azurerm_network_interface, il nome dell'interfaccia era definito come "net-int-${var.prefix}" che sarebbe stato identico per tutte le VM nel ciclo for_each.
+  name                = "net-int-${var.prefix}-${each.key}"
   location            = azurerm_resource_group.K3s_Lab.location
   resource_group_name = azurerm_resource_group.K3s_Lab.name
 
@@ -35,10 +44,11 @@ resource "azurerm_network_interface" "network_interface_K3s" {
     name                          = "ipconfig"
     subnet_id                     = azurerm_subnet.subnet_master.id
     private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.k3s_ip.id
   }
 }
 
-#3. creo la VM
+#4. creo la VM
 resource "azurerm_linux_virtual_machine" "vm_master" {
   for_each = var.vm_master
 
@@ -46,8 +56,8 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
   resource_group_name             = azurerm_resource_group.K3s_Lab.name
   location                        = azurerm_resource_group.K3s_Lab.location
   size                            = each.value.vm_size
-  admin_username                  = "azureuser"
-  admin_password                  = "Password!£!?"
+  admin_username                  = var.admin_username
+  admin_password                  = var.admin_password
   disable_password_authentication = false
 
   network_interface_ids = [
@@ -68,8 +78,35 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
   }
 
   tags = each.value.tags
+  provisioner "file" {
+    source      = "setup.sh"      # File locale
+    destination = "/tmp/setup.sh" # Path remoto
+
+    connection {
+      type     = "ssh"
+      user     = var.admin_username
+      password = var.admin_password
+      host     = azurerm_public_ip.k3s_ip.ip_address
+    }
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/setup.sh", "/tmp/setup.sh"
+    ]
+
+    connection {
+      type     = "ssh"
+      user     = var.admin_username
+      password = var.admin_password
+      host     = azurerm_public_ip.k3s_ip.ip_address
+    }
+  }
 }
 
+# Provisioner per installare Docker e K3s
+
+#5. Creo il Network security group
 resource "azurerm_network_security_group" "K3s_nsg" {
   name                = "${var.prefix}-nsg"
   location            = azurerm_resource_group.K3s_Lab.location
@@ -86,9 +123,45 @@ resource "azurerm_network_security_group" "K3s_nsg" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+
+  security_rule {
+    name                       = "Allow_HTTP"
+    priority                   = 300
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Allow_HTTPS"
+    priority                   = 310
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Allow_30080"
+    priority                   = 320
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "30080"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
 
-# Associazione del gruppo di sicurezza alla subnet
+#6. Associazione del gruppo di sicurezza alla subnet
 resource "azurerm_subnet_network_security_group_association" "nsg_association" {
   subnet_id                 = azurerm_subnet.subnet_master.id
   network_security_group_id = azurerm_network_security_group.K3s_nsg.id
