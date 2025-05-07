@@ -1,4 +1,5 @@
-prefix = "K3s"
+subscription_id = "subscriptio-id"
+prefix          = "K3s"
 vm_master = {
   "VM-master" = {
     vm_size = "Standard_B2s"
@@ -15,3 +16,4 @@ vm_master = {
   }
 }
 admin_username = "azureadmin"
+admin_password = "Set-your-password"
