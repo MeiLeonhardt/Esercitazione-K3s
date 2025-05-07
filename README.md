@@ -687,6 +687,9 @@ kubectl apply -f service.yaml
 # Attendi che i pod siano pronti
 sleep 10
 ```
+# Risultati attesi
+![image](https://github.com/user-attachments/assets/a1b09b21-cfca-4189-b7bb-471340599684)
+
 
 
 _Gracefully shutting down..._ cit. Terraform
