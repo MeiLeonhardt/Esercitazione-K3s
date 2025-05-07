@@ -96,10 +96,18 @@ resource "azurerm_subnet" "subnet_master" {
   virtual_network_name = azurerm_virtual_network.vnet_master.name  #Collegata alla VNet creata sopra
   address_prefixes     = ["10.0.1.0/24"] #IP range per la sottorete
 }
+```
+### Errori riscontrati e soluzione
+Nella risorsa azurerm_network_interface, avevo definito il nome come "net-int-${var.prefix}" e Terraform avrebbe creato delle risorse con lo stesso nome. Ma Azure Network Interface deve avere un nome univoco all'interno di una stesssa sottorete e gruppo di risorse. 
 
+Mi aveva infatti restituito : ```"The resource with the name 'net-int-K3s' already exists."```
+
+Per risolvere il problema, mi sono assicurata che ogni risorsa avesse un nome univoco, concatenando un identificatore unico per ogni iterazione del ciclo for_each con ${each-key}
+
+ ```
 resource "azurerm_network_interface" "network_interface_K3s" {
   for_each            = var.vm_master
-  name                = "net-int-${var.prefix}-${each.key}" #Nella risorsa azurerm_network_interface, avevo definito il nome come "net-int-${var.prefix}" e Terraform avrebbe creato delle risorse con lo stesso nome. Ma Azure Network Interface deve avere un nome univoco all'interno di una stesssa sottorete e gruppo di risorse. Mi ha infatti restituito :"The resource with the name 'net-int-K3s' already exists."
+  name                = "net-int-${var.prefix}-${each.key}"
   location            = azurerm_resource_group.K3s_Lab.location
   resource_group_name = azurerm_resource_group.K3s_Lab.name
 
