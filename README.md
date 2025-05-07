@@ -346,11 +346,10 @@ sudo apt-get update
 sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
 
 # Aggiungi la chiave GPG del repository di Docker
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg
 
 # Aggiungi il repository di Docker
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-
 # Aggiorna nuovamente l'elenco dei pacchetti
 sudo apt update
 
@@ -368,36 +367,25 @@ K3s è una distribuzione leggera di Kubernetes progettata per essere facile da i
 # Installa K3s
 curl -sfL https://get.k3s.io | sh -
 
-# Controlla lo stato di K3s
-systemctl status k3s
-
 # Avvio servizio K3s (questo è ridondante perché K3s si avvia automaticamente dopo l'installazione)
 sudo systemctl enable k3s && sudo systemctl start k3s
 
-# Verifichiamo che l'installazione sia avvenuta
-k3s --version
-```
-K3s normalmente crea già un link simbolico per kubectl, ma questo pezzo di codice verifica se il link esiste e lo crea se necessario. Questo consente di usare il comando kubectl per interagire con il cluster K3s.
-```
 # Configurazione kubectl per K3s
 # K3s già crea un symlink per kubectl, ma verifichiamo se esiste
 if [ ! -f /usr/local/bin/kubectl ]; then
     sudo ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
 fi
 
+#Modifica i permessi del file kubeconfig
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+
+#Avvia K3s con i flag appropriati
+curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+
 # Salva la versione di Kubernetes
-export KUBEVERSION=$(kubectl version --short | grep -i server)
-echo "Kubernetes version: $KUBEVERSION"
-```
-### Creazione del file YAML per il Deployment
-Crea un file deployment.yaml direttamente nella VM che definisce un deployment Kubernetes. Questo deployment:
-- Crea 3 repliche (pod) di un container NGINX
-- Definisce etichette per la selezione e l'identificazione
-- Configura il container per esporre la porta 80
+export KUBEVERSION=$(kubectl version)
 
-**"EOF" (End Of File)** è un marcatore utilizzato in programmazione e nei sistemi operativi Unix/Linux che indica la fine di un input di testo. Nel contesto degli script bash, EOF viene utilizzato in particolare con i comandi "here document" (heredoc) che sono identificati dalla sintassi **cat <<EOF > file.yaml o cat <<EOT > file.conf**.
-
-```
+# Creazione del file YAML per il Deployment dei pod EOF serve per identificare l'inizio e la fine del contenuto per i file deployment e service
 cat <<EOF > deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -421,13 +409,8 @@ spec:
         ports:
         - containerPort: 80
 EOF
-```
-### Creazione del file YAML per il Service
-Crea un file service.yaml che definisce un service Kubernetes direttamente nella VM. Questo service:
-- Espone i pod creati dal deployment tramite un singolo indirizzo IP interno al cluster
-- Indirizza il traffico verso la porta 80 dei pod con l'etichetta "app: example"
-- È di tipo ClusterIP, quindi accessibile solo dall'interno del cluster
-```
+
+# Creazione del file YAML per il Service
 cat <<EOF > service.yaml
 apiVersion: v1
 kind: Service
@@ -445,13 +428,20 @@ EOF
 #applicazione file yaml
 kubectl apply -f deployment.yaml
 kubectl apply -f service.yaml
-
-#verifica deployment
-kubectl get pods
-kubectl get services
-
 ```
+### Creazione del file YAML per il Deployment
+Crea un file deployment.yaml direttamente nella VM che definisce un deployment Kubernetes. Questo deployment:
+- Crea 3 repliche (pod) di un container NGINX
+- Definisce etichette per la selezione e l'identificazione
+- Configura il container per esporre la porta 80
 
+**"EOF" (End Of File)** è un marcatore utilizzato in programmazione e nei sistemi operativi Unix/Linux che indica la fine di un input di testo. Nel contesto degli script bash, EOF viene utilizzato in particolare con i comandi "here document" (heredoc) che sono identificati dalla sintassi **cat <<EOF > file.yaml o cat <<EOT > file.conf**.
+
+### Creazione del file YAML per il Service
+Crea un file service.yaml che definisce un service Kubernetes direttamente nella VM. Questo service:
+- Espone i pod creati dal deployment tramite un singolo indirizzo IP interno al cluster
+- Indirizza il traffico verso la porta 80 dei pod con l'etichetta "app: example"
+- È di tipo ClusterIP, quindi accessibile solo dall'interno del cluster
 ### Errori riscontrati e soluzione
 
 **Errore nella creazione della VM, causato dall'immagine**
@@ -507,6 +497,21 @@ resource "azurerm_network_interface" "network_interface_K3s" {
   }
 }
 ```
+**Errore Risorsa già esistente, devo esportarla**
+```
+╷  
+│ Error: Index value required
+│
+│   on <import-address> line 1:
+│    1: azurerm_linux_virtual_machine.vm_master[VM-master]
+│
+│ Index brackets must contain either a literal number or a literal string.
+╵
+
+For information on valid syntax, see:
+https://developer.hashicorp.com/terraform/cli/state/resource-addressing
+```
+
 **Risultato atteso**
 VM
 ![image](https://github.com/user-attachments/assets/51e796e4-2a78-4e93-9bbe-a3d89a21a908)
