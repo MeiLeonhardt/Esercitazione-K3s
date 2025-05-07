@@ -23,7 +23,7 @@ https://github.com/MrMagicalSoftware/docker-k8s/blob/main/esercitazione-docker-f
 - Configurare una rete virtuale (VNet) appropriata
 - Implementare gruppi di sicurezza (NSG) per gestire il traffico di rete
 
-## Creazione infrastruttura
+## Azurerm e Gruppo risorse
 Verifica dell'**account di Azure**:
 
 ```az account show```
