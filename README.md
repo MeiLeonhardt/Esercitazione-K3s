@@ -73,22 +73,21 @@ main.tf
 
 ```
 resource "azurerm_virtual_network" "vnet_master" {
-  name                = "${var.prefix}-vnet-master"
-  location            = azurerm_resource_group.K3s_Lab.location
-  resource_group_name = azurerm_resource_group.K3s_Lab.name
-  address_space       = ["10.0.0.0/16"]
+  name                = "${var.prefix}-vnet-master" #Risulterà "K3s-vnet-master"
+  location            = azurerm_resource_group.K3s_Lab.location #Usa la location del resource group
+  resource_group_name = azurerm_resource_group.K3s_Lab.name #Appartiene al resource group esistente
+  address_space       = ["10.0.0.0/16"]  # IP range della VNet
 }
 
 resource "azurerm_subnet" "subnet_master" {
-  name                 = "${var.prefix}-subnet-master"
-  resource_group_name  = azurerm_resource_group.K3s_Lab.name
-  virtual_network_name = azurerm_virtual_network.vnet_master.name
-  address_prefixes     = ["10.0.1.0/24"]
+  name                 = "${var.prefix}-subnet-master" #Risulterà "K3s-subnet-master"
+  resource_group_name  = azurerm_resource_group.K3s_Lab.name #Stesso gruppo della VNet
+  virtual_network_name = azurerm_virtual_network.vnet_master.name  #Collegata alla VNet creata sopra
+  address_prefixes     = ["10.0.1.0/24"] #IP range per la sottorete
 }
 ```
 
-variables.tf
-
+variables.tf> definisco i nomi dinamici per le risorse usando la variabile ```prefix``` e esplicitando il contenuto (essendo ```string```) nel file ```.tfvars.```
 ```
 variable "prefix" {
   default     = "string"
