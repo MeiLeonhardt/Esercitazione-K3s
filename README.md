@@ -533,6 +533,7 @@ resource "azurerm_network_security_group" "K3s_nsg" {
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+etc...
 }
 
 # Associazione del gruppo di sicurezza alla subnet
@@ -541,8 +542,32 @@ resource "azurerm_subnet_network_security_group_association" "nsg_association" {
   network_security_group_id = azurerm_network_security_group.K3s_nsg.id
 }
 ```
+Per i Gruppi di sicurezza ho dovuto creare (verificando online), delle regole che permettessero il traffico da qualsiasi origine (non è molto sicuro, soprattutto quando si parla della porta 22 SSH). Infatti, in ambiente di produzione sarebbe meglio associare le regole solo ad indirizzi IP sicuri.
+
+Ho ordinato le regole in base alla priorità e associato le regole alla subnet in questione.
+**Regole di Base**
+1. SSH (porta 22) - Priorità 100: Permette la connessione SSH per la gestione remota delle VM.
+
+**Regole per Docker**
+2. Docker API Secure (porta 2376) - Priorità 110: Consente l'accesso all'API Docker protetta con TLS.
+3. Docker Swarm (porta 2377) - Priorità 120: Consente la comunicazione per il servizio di clustering di Docker Swarm.
+4. Docker Overlay Network (porta 4789 UDP) - Priorità 130: Necessaria per il traffico di rete tra i container Docker.
+5. Docker Swarm Node Communication (porta 7946) - Priorità 140 e 150: Consente la comunicazione tra i nodi Docker Swarm, sia TCP che UDP.
+
+**Regole per Kubernetes (K3s)**
+6. Kubernetes API Server (porta 6443) - Priorità 200: Consente l'accesso all'API server Kubernetes.
+7. Kubelet API (porta 10250) - Priorità 210: Necessaria per la comunicazione tra i componenti di Kubernetes.
+8. Kube-proxy (porta 10256) - Priorità 220: Utilizzata per il controllo dello stato di kube-proxy.
+9. CoreDNS (porta 53 TCP/UDP) - Priorità 230 e 240: Consente la risoluzione DNS all'interno del cluster.
+10. Flannel VXLAN (porta 8472 UDP) - Priorità 250: Necessaria per la rete di container gestita da Flannel in K3s.
+11. Metrics Server (porta 10251) - Priorità 260: Consente la raccolta di metriche nel cluster.
+12. NodePort Services (porte 30000-32767) - Priorità 270: Range di porte utilizzato per esporre servizi all'esterno del cluster.
+
+**Regole per le applicazioni web come Nginx**
+13. HTTP (porta 80) - Priorità 300: Consente il traffico HTTP per applicazioni web come NGINX.
+14. HTTPS (porta 443) - Priorità 310: Consente il traffico HTTPS sicuro.
 
 
-_Gracefully shutting down... _cit. Terraform
+_Gracefully shutting down... _ cit. Terraform
 
 
