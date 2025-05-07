@@ -5,7 +5,7 @@ variable "subscription_id" {
 }
 
 variable "prefix" {
-  default     = "K3s"
+  default     = "string"
   description = "Prefisso della risorsa"
 }
 
