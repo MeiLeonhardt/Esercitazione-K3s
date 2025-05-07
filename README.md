@@ -210,6 +210,15 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
   tags = each.value.tags
 ```
 Questa parte del **provisioner** deve essere inserita all'interno del blocco di configurazione della VM, dopo essersi premurati di creare un file script.sh.
+
+**Funzionamento di file**
+
+Quando utilizzi il provisioner ```file```, Terraform esegue i seguenti passaggi:
+
+1. **Copia del File**: Terraform copia il file specificato dalla tua macchina locale al percorso di destinazione sulla macchina remota.
+2. **Connessione**: Terraform stabilisce una connessione alla macchina remota utilizzando le credenziali fornite (ad esempio, SSH per Linux o WinRM per Windows).
+3. **Percorso di Destinazione**: Puoi specificare il percorso di destinazione sulla macchina remota dove desideri che il file venga copiato.
+
 ```
   provisioner "file" {
     source      = "setup.sh"      # File locale
@@ -222,7 +231,15 @@ Questa parte del **provisioner** deve essere inserita all'interno del blocco di 
       host     = azurerm_public_ip.k3s_ip.ip_address
     }
   }
+```
+**Funzionamento di ```remote-exec```**
+Quando utilizzi il provisioner ```remote-exec```, Terraform stabilisce una connessione SSH (o WinRM per Windows) alla VM e quindi esegue i comandi specificati.
 
+1.**Connessione:** Terraform stabilisce una connessione alla VM utilizzando le credenziali fornite (username e password o chiave SSH).
+2. **Esecuzione dei Comandi**: Una volta stabilita la connessione, Terraform esegue i comandi specificati nel blocco inline o in un file di script.
+3. **Gestione degli Errori**: Se uno dei comandi fallisce (restituisce un codice di uscita diverso da zero), Terraform interrompe l'esecuzione e restituisce un errore.
+
+```
   provisioner "remote-exec" {
     inline = ["chmod +x /tmp/setup.sh", "/tmp/setup.sh"]
 
@@ -318,8 +335,13 @@ admin_username = "azureadmin"
 #qui aggiungere admin_password e subscription_id
 ```
 ### setup.sh
+Questo file verrà copiato ed eseguito da Terraform nella VM creata. Oltre ai comandi di installazione di docker e K3s, bisogna creare anche 2 file YAML, uno per il deployment e uno per il service.
+
+L'operazione che è stata utilizzata e la redirezione cat <<EOF > file.yaml, questo file avrà al suo interno la versione, la tipologia di servizio, i metadata etc... necessari per la configurazione.
+
+**1. Installazione di Docker**
 ```
-#!/bin/bash
+!/bin/bash
 #aggiornamento pacchetti disponibili e versioni
 sudo apt-get update
 
@@ -341,26 +363,83 @@ sudo apt install docker-ce -y
 # Avvia e abilita il servizio Docker
 sudo systemctl start docker
 sudo systemctl enable docker
-
+```
+**2. Installazione K3s**
+```
 # Installa K3s
 curl -sfL https://get.k3s.io | sh -
 
 # Controlla lo stato di K3s
 systemctl status k3s
 
-#Avvio servizio K3s
+# Avvio servizio K3s (questo è ridondante perché K3s si avvia automaticamente dopo l'installazione)
 sudo systemctl enable k3s && sudo systemctl start k3s
 
-#verifichiamo che l'installazione sia avvenuta
+# Verifichiamo che l'installazione sia avvenuta
 k3s --version
+```
+K3s normalmente crea già un link simbolico per kubectl, ma questo pezzo di codice verifica se il link esiste e lo crea se necessario. Questo consente di usare il comando kubectl per interagire con il cluster K3s.
+```
+# Configurazione kubectl per K3s
+# K3s già crea un symlink per kubectl, ma verifichiamo se esiste
+if [ ! -f /usr/local/bin/kubectl ]; then
+    sudo ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
+fi
 
-#configurazione kubectl per K3s
-sudo ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
-export KUBERVERSION=$(kubectl version --short)
+# Salva la versione di Kubernetes
+export KUBEVERSION=$(kubectl version --short | grep -i server)
+echo "Kubernetes version: $KUBEVERSION"
+```
+### Creazione del file YAML per il Deployment
+Crea un file deployment.yaml direttamente nella VM che definisce un deployment Kubernetes. Questo deployment:
+- Crea 3 repliche (pod) di un container NGINX
+- Definisce etichette per la selezione e l'identificazione
+- Configura il container per esporre la porta 80
 
-#file YAML per il Deployment e service
-echo "EOF" > deployment.yaml
-echo "EOF" > service.yaml
+```
+cat <<EOF > deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-deployment
+  labels:
+    app: example
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: example
+  template:
+    metadata:
+      labels:
+        app: example
+    spec:
+      containers:
+      - name: example
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+EOF
+```
+### Creazione del file YAML per il Service
+Crea un file service.yaml che definisce un service Kubernetes direttamente nella VM. Questo service:
+- Espone i pod creati dal deployment tramite un singolo indirizzo IP interno al cluster
+- Indirizza il traffico verso la porta 80 dei pod con l'etichetta "app: example"
+- È di tipo ClusterIP, quindi accessibile solo dall'interno del cluster
+```
+cat <<EOF > service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-service
+spec:
+  selector:
+    app: example
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+EOF
 
 #applicazione file yaml
 kubectl apply -f deployment.yaml
@@ -369,6 +448,7 @@ kubectl apply -f service.yaml
 #verifica deployment
 kubectl get pods
 kubectl get services
+
 ```
 
 ### Errori riscontrati e soluzione
@@ -436,7 +516,8 @@ Virtual Network
 ____________________________________________________________
 
 ## Network Security Groups: gruppo di sicurezza di rete
-
+Per eseguire l'accesso alla VM è necessario creare una regola Inbound per l'accesso alla porta 22 in SSH.
+Per garantire il corretto funzionamento dell'ambiente Kubernetes (K3s) e Docker configurato nello script setup.sh, è necessario configurare alcune regole di sicurezza di rete che permettano la comunicazione sulle porte richieste. Ecco uno script che configura le regole firewall necessarie:
 main.tf
 ```
 resource "azurerm_network_security_group" "K3s_nsg" {
@@ -464,5 +545,7 @@ resource "azurerm_subnet_network_security_group_association" "nsg_association" {
 }
 ```
 
+
+_Gracefully shutting down... _cit. Terraform
 
 
