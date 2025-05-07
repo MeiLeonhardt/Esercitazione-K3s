@@ -171,25 +171,124 @@ output "subnet_cidr_validato" {
 
 _______________________________________________________
 ## Creazione VM
-
+Per la creazione della Virtual machine si è scelto un Ubuntu Server, la scelta dell'immagine ha creato qualche problema per una questione di disponibilità dell'immagine nella regione scelta (nel mio caso West Europe non supportava  "UbuntuServer-18.04-LTS:latest. La soluzione è esposta in "Errori"
 main.tf
 ```
+resource "azurerm_linux_virtual_machine" "vm_master" {
+  for_each = var.vm_master
 
+  name                            = each.key
+  resource_group_name             = azurerm_resource_group.K3s_Lab.name
+  location                        = azurerm_resource_group.K3s_Lab.location
+  size                            = each.value.vm_size
+  admin_username                  = "azureuser"
+  admin_password                  = "Password!£!?"
+  disable_password_authentication = false
+
+  network_interface_ids = [
+    azurerm_network_interface.network_interface_K3s[each.key].id
+  ]
+
+  source_image_reference {
+    publisher = each.value.image.publisher
+    offer     = each.value.image.offer
+    sku       = each.value.image.sku
+    version   = each.value.image.version
+  }
+
+  os_disk {
+    name                 = "${each.key}-osdisk"
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  tags = each.value.tags
+}
 ```
+
+**Per il file variables** si è scelto di accedere alla VM con nome utente e password, rendendo la password segreta (è stata inserita nel file .tfvars.secret).  Le variabili come vm_master, admin_username e admin_password sono utilizzate per rendere la configurazione più flessibile, mantenibile e sicura. Inoltre, aiutano a definire configurazioni diverse per ogni VM in modo centralizzato e riutilizzabile, senza ripetere codice.
+
+La variabile admin e password:
+- Definisce le variabili per l'username e la password dell'amministratore per tutte le VM. La password è protetta (sensitive) per evitare di esporla nel piano di esecuzione.
+- Consente di centralizzare le credenziali di amministratore e di applicarle uniformemente a tutte le VM, pur mantenendo una certa sicurezza per la password.
 
 variables.tf
 ```
+variable "vm_master" {
+  type = map(object({
+    vm_size = string
+    image = object({
+      publisher = string
+      offer     = string
+      sku       = string
+      version   = string
+    })
+    tags = map(string)
+  }))
 
+  default = {
+    "VM-master" = {
+      vm_size = "Standard_B1s"
+      image = {
+        publisher = "Canonical"
+        offer     = "UbuntuServer"
+        sku       = "22_04-lts-gen2"
+        version   = "latest"
+      }
+      tags = {
+        Environment = "dev"
+        Role        = "K3s"
+      }
+    }
+  }
+}
+
+variable "admin_username" {
+  description = "Username dell'amministratore"
+  type        = string
+  default     = "azureuser"
+
+  validation {
+    condition     = length(var.admin_username) >= 6 && length(var.admin_username) <= 20
+    error_message = "Il nome utente deve essere compreso tra 6 e 20 caratteri."
+  }
+}
+
+variable "admin_password" {
+  description = "Password dell'amministratore per le macchine virtuali"
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.admin_password) >= 12 && can(regex("[A-Z]", var.admin_password)) && can(regex("[a-z]", var.admin_password)) && can(regex("[0-9]", var.admin_password)) && can(regex("[!@#$%^&*()_+]", var.admin_password))
+    error_message = "La password deve contenere almeno 12 caratteri, inclusi maiuscole, minuscole, numeri e caratteri speciali (!@#$%^&*()_+)."
+  }
+}
 ```
 
 terraform.tfvars
 ```
-
+vm_master = {
+  "VM-master" = {
+    vm_size = "Standard_B2s"
+    image = {
+      publisher = "Canonical"
+      offer     = "0001-com-ubuntu-server-jammy"
+      sku       = "22_04-lts-gen2"
+      version   = "latest"
+    }
+    tags = {
+      Environment = "dev"
+      Role        = "K3s"
+    }
+  }
+}
+admin_username = "azureadmin"
 ```
 
 ### Errori riscontrati e soluzione
 ```
-│ Error: creating Linux Virtual Machine (Subscription: "subscription_id"
+│ Error: creating Linux Virtual Machine (Subscription: "your_subscription_id"
 │ Resource Group Name: "K3s-Lab"
 cted status 404 (404 Not Found) with error: PlatformImageNotFound: The platform image 'Canonical:0001-com-ubuntu-server-kinetic:24_04-lts-gen2:latest' is not available. Verify that all fields in the storage profile are correct. For more details about storage profile information, please refer to https://aka.ms/storageprofile
 │
@@ -201,9 +300,12 @@ cted status 404 (404 Not Found) with error: PlatformImageNotFound: The platform 
 ```
 **Problema con l'immagine di Ubuntu**
 Nel file terraform.tfvars, avevo specificato Ubuntu 24.04 LTS che potrebbe non essere disponibile o non essere correttamente referenziato. Ho verificato, quindi, quali immagini fossero disponibili per la regione scelta, "west europe"
-# Elencare tutte le offerte Ubuntu disponibili
+
 ```
+#Elenca tutte le offerte Ubuntu disponibili
 echo "Offerte Ubuntu disponibili:" az vm image list-offers --location westeurope --publisher Canonical -o table
 ```
+![image](https://github.com/user-attachments/assets/473c9b34-0978-4063-a39c-1b830492bb7a)
+
 
 
