@@ -372,6 +372,8 @@ kubectl get services
 ```
 
 ### Errori riscontrati e soluzione
+
+**Errore nella creazione della VM, causato dall'immagine**
 ```
 │ Error: creating Linux Virtual Machine (Subscription: "your_subscription_id"
 │ Resource Group Name: "K3s-Lab"
@@ -383,7 +385,6 @@ cted status 404 (404 Not Found) with error: PlatformImageNotFound: The platform 
 │
 ╵
 ```
-**Problema con l'immagine di Ubuntu**
 Nel file terraform.tfvars, avevo specificato Ubuntu 24.04 LTS che potrebbe non essere disponibile o non essere correttamente referenziato. Ho verificato, quindi, quali immagini fossero disponibili per la regione scelta, "west europe"
 
 ```
@@ -393,6 +394,7 @@ echo "Offerte Ubuntu disponibili:" az vm image list-offers --location westeurope
 
 ![image](https://github.com/user-attachments/assets/473c9b34-0978-4063-a39c-1b830492bb7a)
 
+**Errore con il provisioner**
 ```
 │ Error: file provisioner error
 │
@@ -402,7 +404,10 @@ echo "Offerte Ubuntu disponibili:" az vm image list-offers --location westeurope
 │
 │ timeout - last error: dial tcp 168.63.28.19:22: i/o timeout
 ```
+**1. credenziali di accesso segrete**
 Questo errore è dovuto al fatto che Terraform non riesca ad accedere alla VM e quindi non può utilizzare il file.sh, perché le credenziali che ho creato erano "nascoste", ovvero le ho salvate in un file .tfvars.secret in modo che non poossano essere lette automaticamente come variabili. Però, in questo modo Terraform non riuscirà a connettersi con la VM. Pertanto, ho dovuto re-inserire le variabili, esplicitandole nel file .tfvars.
+
+**2. Alla VM manca l'IP pubblico**
 Ultimo problema con questa configurazione, è stato il fatto che nella network interface della VM mi sono dimenticata di inserire l'IP pubblico, altro buon motivo per ricevere errori da Terraform:)
 
 **Network interface corretta**
