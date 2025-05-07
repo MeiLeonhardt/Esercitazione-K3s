@@ -504,9 +504,26 @@ sudo apt install apt-transport-https ca-certificates curl software-properties-co
 
 # Aggiungi la chiave GPG del repository di Docker
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg
-
-# Aggiungi il repository di Docker
+```
+### ATTENZIONE è molto importante mettere -y 
+comando che potenzialmente richiede l'intervento manuale con ENTER e che **blocca il deployment** è questo:
+```
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+```
+**Spiegazione:**
+```add-apt-repository``` può, a seconda del sistema e della configurazione, aprire un prompt interattivo (soprattutto se si usa per aggiungere PPA) chiedendo di premere ENTER per confermare l'aggiunta del repository. Anche se in questo caso si tratta di un repository generico (non PPA), su alcune versioni di Ubuntu può ancora apparire la richiesta di conferma.
+
+**Come evitare il prompt:**
+Puoi forzare la modalità non interattiva usando -y:
+```
+sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_r
+```
+# Aggiungi il repository di Docker
+sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+```
+
+
+```
 # Aggiorna nuovamente l'elenco dei pacchetti
 sudo apt update
 
