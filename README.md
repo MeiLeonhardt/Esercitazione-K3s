@@ -393,6 +393,8 @@ Crea un file deployment.yaml direttamente nella VM che definisce un deployment K
 - Definisce etichette per la selezione e l'identificazione
 - Configura il container per esporre la porta 80
 
+**"EOF" (End Of File)** è un marcatore utilizzato in programmazione e nei sistemi operativi Unix/Linux che indica la fine di un input di testo. Nel contesto degli script bash, EOF viene utilizzato in particolare con i comandi "here document" (heredoc) che sono identificati dalla sintassi **cat <<EOF > file.yaml o cat <<EOT > file.conf**.
+
 ```
 cat <<EOF > deployment.yaml
 apiVersion: apps/v1
