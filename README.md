@@ -492,8 +492,7 @@ Questo file verrà copiato ed eseguito da Terraform nella VM creata. Oltre ai co
 
 L'operazione che è stata utilizzata e la redirezione cat <<EOF > file.yaml, questo file avrà al suo interno la versione, la tipologia di servizio, i metadata etc... necessari per la configurazione.
 
-**Risultato atteso**
-![image](https://github.com/user-attachments/assets/31343fc0-5d7e-458f-ae30-54198147cb0a)
+### setup.sh
 ```
 !/bin/bash
 #aggiornamento pacchetti disponibili e versioni
@@ -507,21 +506,19 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg
 ```
 ### ATTENZIONE è molto importante mettere -y 
 comando che potenzialmente richiede l'intervento manuale con ENTER e che **blocca il deployment** è questo:
+
 ```
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 ```
+
 **Spiegazione:**
 ```add-apt-repository``` può, a seconda del sistema e della configurazione, aprire un prompt interattivo (soprattutto se si usa per aggiungere PPA) chiedendo di premere ENTER per confermare l'aggiunta del repository. Anche se in questo caso si tratta di un repository generico (non PPA), su alcune versioni di Ubuntu può ancora apparire la richiesta di conferma.
 
 **Come evitare il prompt:**
 Puoi forzare la modalità non interattiva usando -y:
 ```
-sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_r
-```
-# Aggiungi il repository di Docker
 sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 ```
-
 
 ```
 # Aggiorna nuovamente l'elenco dei pacchetti
