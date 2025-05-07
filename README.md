@@ -331,117 +331,6 @@ vm_master = {
 admin_username = "azureadmin"
 #qui aggiungere admin_password e subscription_id
 ```
-### setup.sh
-Questo file verrà copiato ed eseguito da Terraform nella VM creata. Oltre ai comandi di installazione di docker e K3s, bisogna creare anche 2 file YAML, uno per il deployment e uno per il service.
-
-L'operazione che è stata utilizzata e la redirezione cat <<EOF > file.yaml, questo file avrà al suo interno la versione, la tipologia di servizio, i metadata etc... necessari per la configurazione.
-
-**1. Installazione di Docker**
-```
-!/bin/bash
-#aggiornamento pacchetti disponibili e versioni
-sudo apt-get update
-
-# Installa i pacchetti necessari
-sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
-
-# Aggiungi la chiave GPG del repository di Docker
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg
-
-# Aggiungi il repository di Docker
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-# Aggiorna nuovamente l'elenco dei pacchetti
-sudo apt update
-
-# Installa Docker
-sudo apt install docker-ce -y
-
-# Avvia e abilita il servizio Docker
-sudo systemctl start docker
-sudo systemctl enable docker
-```
-**2. Installazione K3s**
-K3s è una distribuzione leggera di Kubernetes progettata per essere facile da installare e gestire, particolarmente adatta per ambienti edge, IoT e sviluppo. È sviluppata da Rancher Labs e include molte delle funzionalità di Kubernetes, ma con un ingombro ridotto e una configurazione semplificata. K3s è progettato per funzionare bene su hardware con risorse limitate e può essere eseguito in modo efficiente su macchine virtuali o dispositivi a bassa potenza.
-
-```
-# Installa K3s
-curl -sfL https://get.k3s.io | sh -
-
-# Avvio servizio K3s (questo è ridondante perché K3s si avvia automaticamente dopo l'installazione)
-sudo systemctl enable k3s && sudo systemctl start k3s
-
-# Configurazione kubectl per K3s
-# K3s già crea un symlink per kubectl, ma verifichiamo se esiste
-if [ ! -f /usr/local/bin/kubectl ]; then
-    sudo ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
-fi
-
-#Modifica i permessi del file kubeconfig
-sudo chmod 644 /etc/rancher/k3s/k3s.yaml
-
-#Avvia K3s con i flag appropriati
-curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
-
-# Salva la versione di Kubernetes
-export KUBEVERSION=$(kubectl version)
-
-# Creazione del file YAML per il Deployment dei pod EOF serve per identificare l'inizio e la fine del contenuto per i file deployment e service
-cat <<EOF > deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: example-deployment
-  labels:
-    app: example
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: example
-  template:
-    metadata:
-      labels:
-        app: example
-    spec:
-      containers:
-      - name: example
-        image: nginx:latest
-        ports:
-        - containerPort: 80
-EOF
-
-# Creazione del file YAML per il Service
-cat <<EOF > service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: example-service
-spec:
-  selector:
-    app: example
-  ports:
-  - port: 80
-    targetPort: 80
-  type: ClusterIP
-EOF
-
-#applicazione file yaml
-kubectl apply -f deployment.yaml
-kubectl apply -f service.yaml
-```
-### Creazione del file YAML per il Deployment
-Crea un file deployment.yaml direttamente nella VM che definisce un deployment Kubernetes. Questo deployment:
-- Crea 3 repliche (pod) di un container NGINX
-- Definisce etichette per la selezione e l'identificazione
-- Configura il container per esporre la porta 80
-
-**"EOF" (End Of File)** è un marcatore utilizzato in programmazione e nei sistemi operativi Unix/Linux che indica la fine di un input di testo. Nel contesto degli script bash, EOF viene utilizzato in particolare con i comandi "here document" (heredoc) che sono identificati dalla sintassi **cat <<EOF > file.yaml o cat <<EOT > file.conf**.
-
-### Creazione del file YAML per il Service
-Crea un file service.yaml che definisce un service Kubernetes direttamente nella VM. Questo service:
-- Espone i pod creati dal deployment tramite un singolo indirizzo IP interno al cluster
-- Indirizza il traffico verso la porta 80 dei pod con l'etichetta "app: example"
-- È di tipo ClusterIP, quindi accessibile solo dall'interno del cluster
 ### Errori riscontrati e soluzione
 
 **Errore nella creazione della VM, causato dall'immagine**
@@ -597,7 +486,195 @@ Ho ordinato le regole in base alla priorità e associato le regole alla subnet i
 13. HTTP (porta 80) - Priorità 300: Consente il traffico HTTP per applicazioni web come NGINX.
 
 14. HTTPS (porta 443) - Priorità 310: Consente il traffico HTTPS sicuro.
+__________________________________________________________
+# 3. Deployment dell'applicazione setup.sh
+Questo file verrà copiato ed eseguito da Terraform nella VM creata. Oltre ai comandi di installazione di docker e K3s, bisogna creare anche 2 file YAML, uno per il deployment e uno per il service.
 
+L'operazione che è stata utilizzata e la redirezione cat <<EOF > file.yaml, questo file avrà al suo interno la versione, la tipologia di servizio, i metadata etc... necessari per la configurazione.
+
+**Risultato atteso**
+![image](https://github.com/user-attachments/assets/31343fc0-5d7e-458f-ae30-54198147cb0a)
+```
+!/bin/bash
+#aggiornamento pacchetti disponibili e versioni
+sudo apt-get update
+
+# Installa i pacchetti necessari
+sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
+
+# Aggiungi la chiave GPG del repository di Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg
+
+# Aggiungi il repository di Docker
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+# Aggiorna nuovamente l'elenco dei pacchetti
+sudo apt update
+
+# Installa Docker
+sudo apt install docker-ce -y
+
+# Avvia e abilita il servizio Docker
+sudo systemctl start docker
+sudo systemctl enable docker
+```
+**2. Installazione K3s**
+K3s è una distribuzione leggera di Kubernetes progettata per essere facile da installare e gestire, particolarmente adatta per ambienti edge, IoT e sviluppo. È sviluppata da Rancher Labs e include molte delle funzionalità di Kubernetes, ma con un ingombro ridotto e una configurazione semplificata. K3s è progettato per funzionare bene su hardware con risorse limitate e può essere eseguito in modo efficiente su macchine virtuali o dispositivi a bassa potenza.
+```
+# Installa K3s
+curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+
+# Attendi che K3s sia completamente avviato
+sleep 30
+
+# Avvio servizio K3s (questo è ridondante perché K3s si avvia automaticamente dopo l'installazione)
+sudo systemctl enable k3s && sudo systemctl start k3s
+
+# K3s già crea un symlink per kubectl, ma verifichiamo se esiste
+sudo ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
+
+#Modifica i permessi del file kubeconfig
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+
+#Avvia K3s con i flag appropriati
+curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+
+# Salva la versione di Kubernetes
+export KUBEVERSION=$(kubectl version)
+```
+**"EOF" (End Of File)** è un marcatore utilizzato in programmazione e nei sistemi operativi Unix/Linux che indica la fine di un input di testo. Nel contesto degli script bash, EOF viene utilizzato in particolare con i comandi "here document" (heredoc) che sono identificati dalla sintassi **cat <<EOF > file.yaml o cat <<EOT > file.conf**.
+```
+# Creazione struttura del progetto Node.js
+mkdir -p hello-docker
+cd hello-docker
+
+# Crea il file app.js
+cat <<EOF > app.js
+const express = require('express');
+const app = express();
+const port = 3000;
+
+app.get('/', (req, res) => {
+    res.send('Hello, World!');
+});
+
+app.listen(port, '0.0.0.0', () => {
+    console.log(\`App listening at http://0.0.0.0:\${port}\`);
+});
+EOF
+
+# Crea il file package.json
+cat <<EOF > package.json
+{
+  "name": "hello-docker",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
+EOF
+
+# Crea il Dockerfile
+cat <<EOF > Dockerfile
+# Usa un'immagine base di Node.js
+FROM node:14
+
+# Imposta la cartella di lavoro
+WORKDIR /usr/src/app
+
+# Copia il file package.json e installa le dipendenze
+COPY package*.json ./
+RUN npm install
+
+# Copia il resto dell'applicazione
+COPY . .
+
+# Espone la porta su cui l'app ascolta
+EXPOSE 3000
+
+# Comando per avviare l'app
+CMD ["npm", "start"]
+EOF
+
+# Costruisci l'immagine Docker
+sudo docker build -t hello-docker:v1 .
+
+# Salva l'immagine come file tar per importarla in K3s
+sudo docker save hello-docker:v1 -o hello-docker.tar
+
+# Importa l'immagine nel registro interno di K3s
+sudo k3s ctr images import hello-docker.tar
+
+# Torna alla directory principale
+cd ..
+```
+### Creazione del file YAML per il Deployment
+Crea un file deployment.yaml direttamente nella VM che definisce un deployment Kubernetes. Questo deployment:
+- Crea 3 repliche (pod) di un container NGINX
+- Definisce etichette per la selezione e l'identificazione
+- Configura il container per esporre la porta 80
+![image](https://github.com/user-attachments/assets/03e13325-2731-40db-a1cc-a54865438ae4)
+
+```
+# Creazione del file YAML per il Deployment dei pod EOF serve per identificare l'inizio e la fine del contenuto per i file deployment e service
+cat <<EOF > deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: Lab-deployment
+  labels:
+    app: nodejs_app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nodejs_app
+  template:
+    metadata:
+      labels:
+        app: nodejs-app
+    spec:
+      containers:
+      - name: nodejs-app
+        image: hello-docker:latest
+        ports:
+        - containerPort: 3000
+EOF
+```
+### Creazione del file YAML per il Service
+Crea un file service.yaml che definisce un service Kubernetes direttamente nella VM. Questo service:
+- Espone i pod creati dal deployment tramite un singolo indirizzo IP interno al cluster
+- Indirizza il traffico verso la porta 80 dei pod con l'etichetta "app: example"
+- È di tipo ClusterIP, quindi accessibile solo dall'interno del cluster
+![image](https://github.com/user-attachments/assets/ec1579a9-39c2-4857-a99b-ab7ae968cd3f)
+
+```
+# Creazione del file YAML per il Service
+cat <<EOF > service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-app-service
+spec:
+  selector:
+    app: nodejs-app
+  ports:
+  - port: 80
+    targetPort: 3000
+    nodePort: 30080
+  type: NodePort
+EOF
+
+#applicazione file yaml
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+
+# Attendi che i pod siano pronti
+sleep 10
+```
 
 
 _Gracefully shutting down..._ cit. Terraform
