@@ -591,6 +591,6 @@ Ho ordinato le regole in base alla priorità e associato le regole alla subnet i
 
 
 
-_Gracefully shutting down... _ cit. Terraform
+_Gracefully shutting down..._ cit. Terraform
 
 
