@@ -61,9 +61,6 @@ variable "subscription_id" {
   sensitive   = true
 }
 ```
-![image](https://github.com/user-attachments/assets/ef28516e-d7b1-45c8-977c-109d694f6e94)
-
-
 Successivamente, ho creato un ```terraform.tfvars.secret```.
 
 In questo file verranno messi tutti i dati sensibili, come l'id, le password etc...
