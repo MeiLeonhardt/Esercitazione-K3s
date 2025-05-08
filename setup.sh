@@ -1,5 +1,6 @@
 #!/bin/bash
-
+#elenco dei pacchetti e installano alcuni strumenti e certificati necessari 
+#per gestire connessioni sicure e per facilitare altre operazioni di rete e gestione dei pacchetti.
 sudo apt-get update
 sudo apt-get install -y \
     ca-certificates \
