@@ -5,6 +5,15 @@ deployato un progetto Docker fornito e disponibile al seguente indirizzo
 
 https://github.com/MrMagicalSoftware/docker-k8s/blob/main/esercitazione-docker-file.md
 
+## Strumenti e Tecnologie
+- Terraform
+
+- Azure Resource Manager (azurerm)
+
+- K3s (lightweight Kubernetes)
+
+- Docker
+
 **NB:Comandi utili per lavorare in Terraform**
 
 - ```terraform init```  = Inizializza una directory di lavoro Terraform, scaricando i plugin dei provider e preparando l’ambiente per l'esecuzione dei comandi successivi.
