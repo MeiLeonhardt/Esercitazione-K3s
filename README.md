@@ -492,6 +492,7 @@ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubun
 sudo apt update
 ```
 Seppur, in altri lab, questi comandi funzionassero correttamente, ho dovuto fare una ricerca per capire quale fosse un altro sistema per automatizzare l'installazione di docker, creando correttamente la directory per la chiave GPG (chiave pubblica crittografica utilizzata per verificare l'autenticità dei pacchetti Docker) e per aggiungere il repository di docker.
+
 Sono andata quindi a verificare metodi alternativi,, direttamente nel sito di Docker: https://docs.docker.com/engine/install/ubuntu/ e ho testato i comandi:
 
 ```
@@ -693,8 +694,23 @@ kubectl apply -f service.yaml
 sleep 10
 ```
 # Risultati attesi
-![image](https://github.com/user-attachments/assets/a1b09b21-cfca-4189-b7bb-471340599684)
+Dopo l'ultimo test senza aprire la VM il codice funziona, deploya tutto quello che deve deployare ed ecco il nostro **Hello,World!**
 
+![image](https://github.com/user-attachments/assets/68770f99-121e-4bfc-a85c-941eddba75a5)
+
+## Conclusioni
+In questo lab ho cercato di creare un codice in Terraform che fosse riutillizzabile attraverso le variabili che ho impostato. 
+Infatti, se si volesse, si potrebbero aggiungere nel file variables.tf tante vm quante ne servono per il deployment; in main.tf il codice è adatto per un ciclo di creazione di più VM.
+
+Per quanto riguarda il file.sh, sono riuscita a leggere gli output in Terraform per capire a quale blocco del file si fosse interrotto il deployment, in questo modo è stato più semplice capire dove e quali comandi modificare per il corretto funzionamento del provisioner. 
+
+Ad ora, ecco come dovrebbe apparire il deployment in Terraform
+![image](https://github.com/user-attachments/assets/8ad3ffff-3724-4bcb-8085-05cd3a222052)
+![image](https://github.com/user-attachments/assets/d1c48d0c-f2ac-4d2b-b0a9-2982d0b7ed40)
+
+Grazie agli output che ho creato, ho ottenuto l'ip pubblico della vm e ho potuto verificare il corretto funzionamento del pod all'indirizzo-ip-pubblico:porta-nodeport.
+
+**Attenzione**: è importante ricordarsi di creare le dovute nsg per esporre le porte scelte nel file deployment.yaml.
 
 
 _Gracefully shutting down..._ cit. Terraform
