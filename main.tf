@@ -78,6 +78,8 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
   }
 
   tags = each.value.tags
+
+# Provisioner per installare Docker e K3s
   provisioner "file" {
     source      = "setup.sh"      # File locale
     destination = "/tmp/setup.sh" # Path remoto
@@ -103,8 +105,6 @@ resource "azurerm_linux_virtual_machine" "vm_master" {
     }
   }
 }
-
-# Provisioner per installare Docker e K3s
 
 #5. Creo il Network security group
 resource "azurerm_network_security_group" "K3s_nsg" {
