@@ -462,25 +462,9 @@ Questo file verrà copiato ed eseguito da Terraform nella VM creata. Oltre ai co
 
 L'operazione che è stata utilizzata e la redirezione cat <<EOF > file.yaml, questo file avrà al suo interno la versione, la tipologia di servizio, i metadata etc... necessari per la configurazione.
 
-### setup.sh
-```
-!/bin/bash
-#aggiornamento pacchetti disponibili e versioni
-sudo apt-get update
-
-# Installa i pacchetti necessari
-sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
-
-# Aggiungi la chiave GPG del repository di Docker
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg
-```
-### ATTENZIONE è molto importante mettere -y 
-comando che potenzialmente richiede l'intervento manuale con ENTER e che **blocca il deployment** è questo:
-
-```
-sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-```
-
+## Come è stato creato il file setup.sh: errori e troubleshooting
+1. Mi sono resa conto che ci fosse un errore quando il deployment in Terraform stava durando 50 minuti. Quindi ho deciso di controllare tutti i messaggi di outpput del deployment per verificare dove il codice si fosse fermato.
+Il deployment di fermava ad un messaggio che richiedeva di validare l'operazione con [ENTER] O [CTRL-C]. Andando ad analizzare il file sh, infatti, mi sono accorta che ci fosse ```sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" ``` senza il ```-y```, ovvero il sistema di conferma automatica.
 **Spiegazione:**
 ```add-apt-repository``` può, a seconda del sistema e della configurazione, aprire un prompt interattivo (soprattutto se si usa per aggiungere PPA) chiedendo di premere ENTER per confermare l'aggiunta del repository. Anche se in questo caso si tratta di un repository generico (non PPA), su alcune versioni di Ubuntu può ancora apparire la richiesta di conferma.
 
@@ -489,19 +473,45 @@ Puoi forzare la modalità non interattiva usando -y:
 ```
 sudo add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 ```
+3. Tuttavia, una volta fatto un ```terraform destroy``` e ```terraform apply``` e, dopo essere entrata nella VM alla fine del deployment, mi sono accorta che non fossero installati nè docker nè K3s. Risultava, invece, che fossero stati creati correttamente la cartella ```hello-docker``` e i file.yaml.
+Quindi ho ripreso il file sh e ho testato uno a uno i comandi nella VM. Ho notato subito che la mancata installazione dei pacchetti era dovuta da:
 
 ```
+sudo apt-get update
+
+# Installa i pacchetti necessari
+sudo apt install apt-transport-https ca-certificates curl software-properties-common -y
+
+# Aggiungi la chiave GPG del repository di Docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+# Aggiungi il repository di Docker
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
 # Aggiorna nuovamente l'elenco dei pacchetti
 sudo apt update
-
-# Installa Docker
-sudo apt install docker-ce -y
-
-# Avvia e abilita il servizio Docker
-sudo systemctl start docker
-sudo systemctl enable docker
 ```
-**2. Installazione K3s**
+Seppur, in altri lab, questi comandi funzionassero correttamente, ho dovuto fare una ricerca per capire quale fosse un altro sistema per automatizzare l'installazione di docker, creando correttamente la directory per la chiave GPG (chiave pubblica crittografica utilizzata per verificare l'autenticità dei pacchetti Docker) e per aggiungere il repository di docker.
+Sono andata quindi a verificare metodi alternativi,, direttamente nel sito di Docker: https://docs.docker.com/engine/install/ubuntu/ e ho testato i comandi:
+
+```
+# Crea directory per chiave GPG
+sudo mkdir -p /etc/apt/keyrings
+
+# Aggiungi la chiave GPG
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+# Aggiungi il repository Docker
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+**A questo punto i pacchetti si sono installati correttamente!**
+
+**Installazione K3s**
 K3s è una distribuzione leggera di Kubernetes progettata per essere facile da installare e gestire, particolarmente adatta per ambienti edge, IoT e sviluppo. È sviluppata da Rancher Labs e include molte delle funzionalità di Kubernetes, ma con un ingombro ridotto e una configurazione semplificata. K3s è progettato per funzionare bene su hardware con risorse limitate e può essere eseguito in modo efficiente su macchine virtuali o dispositivi a bassa potenza.
 ```
 # Installa K3s
@@ -518,9 +528,6 @@ sudo ln -s /usr/local/bin/k3s /usr/local/bin/kubectl
 
 #Modifica i permessi del file kubeconfig
 sudo chmod 644 /etc/rancher/k3s/k3s.yaml
-
-#Avvia K3s con i flag appropriati
-curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
 
 # Salva la versione di Kubernetes
 export KUBEVERSION=$(kubectl version)
@@ -561,6 +568,10 @@ cat <<EOF > package.json
 }
 EOF
 
+#npm install per le dipendenze
+sudo apt npm install -y
+sudo npm install
+
 # Crea il Dockerfile
 cat <<EOF > Dockerfile
 # Usa un'immagine base di Node.js
@@ -584,17 +595,41 @@ CMD ["npm", "start"]
 EOF
 
 # Costruisci l'immagine Docker
-sudo docker build -t hello-docker:v1 .
+sudo docker build -t hello-docker:latest .
 
 # Salva l'immagine come file tar per importarla in K3s
-sudo docker save hello-docker:v1 -o hello-docker.tar
+sudo docker save hello-docker:latest -o hello-docker.tar
 
 # Importa l'immagine nel registro interno di K3s
-sudo k3s ctr images import hello-docker.tar
-
-# Torna alla directory principale
-cd ..
+sudo k3s ctr --namespace=k8s.io images import hello-docker.tar
 ```
+3. In questo caso, invece, nella prima versione del file mi sono dimenticata di **installare npm**, ho aggiunto il comando per completare tutti i passaggi per la creazione dell'immagine Docker.
+Un altro problema che ho avuto in questa sezione, era il salvataggio del file.tar (un tipo di file di archivio utilizzato per raccogliere e combinare più file in un unico file gestibile) per l'importazione nel custer di k3s.
+Ci sono diverse possibili cause per cui l'importazione non sta avvenendo correttamente:
+
+- **Namespace mancante nella fase di importazione**: K3s utilizza containerd che richiede un namespace. Il comando di importazione dovrebbe specificare il namespace corretto.
+- **Path dell'immagine non aggiornato**: Dopo l'importazione, il nome dell'immagine potrebbe non essere accessibile come ti aspetti.
+- **Problema di permessi** nei file o comandi.
+
+Ho dovuto testare un comando diverso da quello che usavo inizialmente ```sudo k3s ctr images import hello-docker.tar```
+
+**comando aggiornato**
+```
+# Importa l'immagine nel registro interno di K3s
+sudo k3s ctr --namespace=k8s.io images import hello-docker.tar
+```
+Per verificare che l'operazione sia andata a buon fine:
+```
+sudo k3s ctr images ls | grep hello-docker
+```
+**Restituisce, se tutto va bene**
+```
+docker.io/library/hello docker:latest           saved
+application/vnd.oci.image.manifest.v1+json sha256:135c113df5378afdc57587844824e7ab5f8ba8515f700c20155fe1f59a8d79c2
+Importing       elapsed: 96.7s  total:   0.0 B  (0.0 B/s)
+```
+Infine, ho modificato il file deployment.yaml affinché utilizzasse l'immagine hello-docker e h agggiunto ```imagePullPolicy: IfNotPresent``` ( Kubernetes controllerà se l'immagine richiesta è già presente nel nodo. Se l'immagine è già disponibile, non verrà effettuato alcun pull (estrazione) dall'immagine. Se l'immagine non è presente, Kubernetes procederà a scaricarla dal registro delle immagini).
+
 ### Creazione del file YAML per il Deployment
 Crea un file deployment.yaml direttamente nella VM che definisce un deployment Kubernetes. Questo deployment:
 - Crea 3 repliche (pod) di un container NGINX
@@ -602,12 +637,11 @@ Crea un file deployment.yaml direttamente nella VM che definisce un deployment K
 - Configura il container per esporre la porta 80
 
 ```
-# Creazione del file YAML per il Deployment dei pod EOF serve per identificare l'inizio e la fine del contenuto per i file deployment e service
 cat <<EOF > deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: Lab-deployment
+  name: nodejs-app
   labels:
     app: nodejs_app
 spec:
@@ -618,11 +652,12 @@ spec:
   template:
     metadata:
       labels:
-        app: nodejs-app
+        app: nodejs_app
     spec:
       containers:
       - name: nodejs-app
-        image: hello-docker:latest
+        image: docker.io/library/hello-docker:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 3000
 EOF
