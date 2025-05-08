@@ -624,18 +624,20 @@ Per verificare che l'operazione sia andata a buon fine:
 sudo k3s ctr images ls | grep hello-docker
 ```
 **Restituisce, se tutto va bene**
-```
-docker.io/library/hello docker:latest           saved
-application/vnd.oci.image.manifest.v1+json sha256:135c113df5378afdc57587844824e7ab5f8ba8515f700c20155fe1f59a8d79c2
-Importing       elapsed: 96.7s  total:   0.0 B  (0.0 B/s)
-```
+![image](https://github.com/user-attachments/assets/122d19aa-95ca-4a6f-9370-5d6460840613)
+![image](https://github.com/user-attachments/assets/9878ec78-ba37-4bf8-82ca-34cc81873d65)
+
 Infine, ho modificato il file deployment.yaml affinché utilizzasse l'immagine hello-docker e h agggiunto ```imagePullPolicy: IfNotPresent``` ( Kubernetes controllerà se l'immagine richiesta è già presente nel nodo. Se l'immagine è già disponibile, non verrà effettuato alcun pull (estrazione) dall'immagine. Se l'immagine non è presente, Kubernetes procederà a scaricarla dal registro delle immagini).
+
+![image](https://github.com/user-attachments/assets/070f67c1-f051-4570-8013-d708710287b5)
+
 
 ### Creazione del file YAML per il Deployment
 Crea un file deployment.yaml direttamente nella VM che definisce un deployment Kubernetes. Questo deployment:
 - Crea 3 repliche (pod) di un container NGINX
 - Definisce etichette per la selezione e l'identificazione
 - Configura il container per esporre la porta 80
+![image](https://github.com/user-attachments/assets/90b356d5-a6b1-40fa-bb3b-edee8453afbe)
 
 ```
 cat <<EOF > deployment.yaml
@@ -711,6 +713,29 @@ Ad ora, ecco come dovrebbe apparire il deployment in Terraform
 Grazie agli output che ho creato, ho ottenuto l'ip pubblico della vm e ho potuto verificare il corretto funzionamento del pod all'indirizzo-ip-pubblico:porta-nodeport.
 
 **Attenzione**: è importante ricordarsi di creare le dovute nsg per esporre le porte scelte nel file deployment.yaml.
+
+### Verifica finale nella VM
+**sudo docker version**
+![image](https://github.com/user-attachments/assets/15c2ca1c-5f5b-47ae-a132-826553f429e0)
+
+**sudo k3s version**
+![image](https://github.com/user-attachments/assets/67160e04-b79d-4666-83f4-77f0841dc262)
+
+
+**kubectl get pods**
+![image](https://github.com/user-attachments/assets/6ab97013-a90c-4464-b5a8-e9d647c48700)
+
+**sudo docker images**
+![image](https://github.com/user-attachments/assets/16f87494-37c3-4794-8788-6aa2e39ddfbc)
+
+**cat deployment.yaml**
+![image](https://github.com/user-attachments/assets/5eaabf1e-5313-459d-80ec-09b325362fc7)
+
+**cat service.yaml**
+![image](https://github.com/user-attachments/assets/290300b2-af10-4c28-b70b-cf1642fc6cb8)
+
+
+
 
 
 _Gracefully shutting down..._ cit. Terraform
