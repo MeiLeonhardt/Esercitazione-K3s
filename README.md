@@ -717,7 +717,7 @@ Per quanto riguarda il file.sh, sono riuscita a leggere gli output in Terraform 
 
 Ad ora, ecco come dovrebbe apparire il deployment in Terraform
 ![image](https://github.com/user-attachments/assets/8ad3ffff-3724-4bcb-8085-05cd3a222052)
-![image](https://github.com/user-attachments/assets/d1c48d0c-f2ac-4d2b-b0a9-2982d0b7ed40)
+
 
 Grazie agli output che ho creato, ho ottenuto l'ip pubblico della vm e ho potuto verificare il corretto funzionamento del pod all'indirizzo-ip-pubblico:porta-nodeport.
 
