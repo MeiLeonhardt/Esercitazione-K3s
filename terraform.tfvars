@@ -1,4 +1,4 @@
-subscription_id = "subscriptio-id"
+subscription_id = "xxxxxxxxxxxxxxxxxxxxxxxx"
 prefix          = "K3s"
 vm_master = {
   "VM-master" = {
@@ -16,4 +16,4 @@ vm_master = {
   }
 }
 admin_username = "azureadmin"
-admin_password = "Set-your-password"
+admin_password = "xxxxxxxxxxx"
