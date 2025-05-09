@@ -1,6 +1,6 @@
 # Implementare un cluster K3s su Azure con Terraform e Docker
 
-Si vuole implementare un'infrastruttura su Azure utilizzando Terraform che consiste in un cluster K3s ad alta disponibilità con 3 nodi. Su questo cluster verrà
+Si vuole implementare un'infrastruttura su Azure utilizzando Terraform che consiste in un cluster K3s. Su questo cluster verrà
 deployato un progetto Docker fornito e disponibile al seguente indirizzo
 
 https://github.com/MrMagicalSoftware/docker-k8s/blob/main/esercitazione-docker-file.md
